@@ -17,6 +17,7 @@ https://api.worldbank.org/v2/country/UG/indicator/{CODE}?format=json
 """
 
 """Imported libraries and defined project settings"""
+import streamlit as st
 import requests, duckdb, numpy as np, pandas as pd
 import plotly.graph_objects as go
 from statsmodels.tsa.arima.model import ARIMA

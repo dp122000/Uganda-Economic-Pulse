@@ -102,7 +102,7 @@ risk_level = "Low" if overall <= 33 else "Moderate" if overall <= 66 else "High"
 
 page = st.sidebar.radio(
     "Dashboard",
-    ["01 Overview", "02 Indicators & Outlook"]
+    ["01 Home", "02 Indicators & Outlook"]
 )
 
 # =========================

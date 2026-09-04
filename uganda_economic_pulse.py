@@ -103,11 +103,26 @@ def risk(value, low, high, reverse=False):
     return 0 if value < low else 1 if value < high else 2
 
 
+def inflation_risk(value):
+    # Deflation (negative inflation) is its own warning sign, not just
+    # "very low inflation is good" — flag it as Moderate rather than Low.
+    if value < 0:
+        return 1
+    return risk(value, 5, 8)
+
 risk_scores = {
     "GDP Growth": risk(latest["GDP Growth"], 3, 5, True),
-    "Inflation": risk(latest["Inflation"], 5, 8),
-    "Unemployment": risk(latest["Unemployment"], 5, 8)
+    "Inflation": inflation_risk(latest["Inflation"]),
+    "Unemployment": risk(latest["Unemployment"], 5, 8),
 }
+
+if "Poverty" in latest.index:
+    poverty_series = df[df.indicator == "Poverty"].sort_values("year")
+    if len(poverty_series) >= 2:
+        change = poverty_series["value"].iloc[-1] - poverty_series["value"].iloc[0]
+        risk_scores["Poverty"] = 0 if change < -1 else 1 if change <= 1 else 2
+    else:
+        risk_scores["Poverty"] = 1  # insufficient history — treat as unknown/moderate
 
 tb = trade["Trade Balance"].dropna().iloc[-1]
 risk_scores["Trade"] = 0 if tb >= 0 else 1 if tb >= -5 else 2

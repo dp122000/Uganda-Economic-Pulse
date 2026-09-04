@@ -182,12 +182,9 @@ if page == "01 Economic Overview":
 
     st.metric("Risk Level", f"{level} — {overall}/100")
 
-    r1, r2, r3, r4 = st.columns(4)
+    risk_cols = st.columns(len(risk_scores))
 
-    for col, (name, score) in zip(
-        [r1, r2, r3, r4],
-        risk_scores.items()
-    ):
+    for col, (name, score) in zip(risk_cols, risk_scores.items()):
         col.metric(
             name,
             ["Low", "Moderate", "High"][score]
@@ -206,6 +203,9 @@ if page == "01 Economic Overview":
 
     if risk_scores["Trade"] > 0:
         st.write("• Monitor import pressure and trade-balance deterioration.")
+
+    if risk_scores.get("Poverty", 0) > 0:
+        st.write("• Prioritize targeted social safety nets and rural income-support programs.")
 
     st.info(
         "This is an analytical risk framework developed for this project "

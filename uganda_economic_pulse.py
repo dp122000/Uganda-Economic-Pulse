@@ -23,7 +23,7 @@ import plotly.graph_objects as go
 from statsmodels.tsa.arima.model import ARIMA
 from datetime import datetime, timezone
 
-DB = "/content/uganda_economic.duckdb"
+DB = "uganda_economic.duckdb"
 BASE = "https://api.worldbank.org/v2/country/UGA/indicator"
 
 INDICATORS = {

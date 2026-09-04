@@ -220,11 +220,14 @@ if page == "01 Economic Overview":
 
     for indicator in trend.indicator.unique():
         x = trend[trend.indicator == indicator]
+        point_colors = ["red" if v < 0 else "black" for v in x.value]
         fig.add_trace(go.Scatter(
             x=x.year,
             y=x.value,
             mode="lines+markers",
-            name=indicator
+            name=indicator,
+            line=dict(color="black"),
+            marker=dict(color=point_colors, size=8),
         ))
 
     fig.update_layout(
@@ -237,14 +240,26 @@ if page == "01 Economic Overview":
 
     st.subheader("Overall Economic Risk")
 
-    st.metric("Risk Level", f"{level} — {overall}/100")
+    overall_color = "red" if level == "High" else "black"
+    st.markdown(
+        f"""<div>
+            <div style="font-size:14px; color:#666;">Risk Level</div>
+            <div style="font-size:32px; font-weight:700; color:{overall_color};">{level} — {overall}/100</div>
+        </div>""",
+        unsafe_allow_html=True,
+    )
 
     risk_cols = st.columns(len(risk_scores))
 
     for col, (name, score) in zip(risk_cols, risk_scores.items()):
-        col.metric(
-            name,
-            ["Low", "Moderate", "High"][score]
+        label = ["Low", "Moderate", "High"][score]
+        color = "red" if label == "High" else "black"
+        col.markdown(
+            f"""<div style="text-align:center;">
+                <div style="font-size:14px; color:#666;">{name}</div>
+                <div style="font-size:28px; font-weight:700; color:{color};">{label}</div>
+            </div>""",
+            unsafe_allow_html=True,
         )
 
     st.subheader("Data-informed priorities")

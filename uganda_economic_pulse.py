@@ -223,7 +223,7 @@ if page == "01 Economic Overview":
     st.plotly_chart(fig, use_container_width=True)
 
     with st.expander("Indicator summary (via DuckDB)"):
-        st.dataframe(indicator_summary, use_container_width=True, hide_index=True)
+    st.dataframe(indicator_summary, use_container_width=True, hide_index=True)
 
     st.subheader("Overall Economic Risk")
 

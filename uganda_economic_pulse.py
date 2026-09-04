@@ -14,6 +14,8 @@ import streamlit as st
 import requests, duckdb, numpy as np, pandas as pd
 import plotly.graph_objects as go
 from statsmodels.tsa.arima.model import ARIMA
+import threading, time, os
+from datetime import datetime, timezone
 
 st.set_page_config(
     page_title="Uganda Economic Pulse",
@@ -34,40 +36,62 @@ IND = {
 }
 
 
-@st.cache_data(ttl=3600)
-def get_data():
-    rows = []
+DATA_FILE = "uganda_economic.csv"
+# World Bank data reports annually, but late revisions to recent years do
+# happen -- syncing hourly catches those without hammering a free public API.
+POLL_INTERVAL_SECONDS = 3600
 
+_csv_lock = threading.Lock()
+
+
+def fetch_all_indicators():
+    rows = []
+    ingest_ts = datetime.now(timezone.utc).isoformat()
     for name, code in IND.items():
         url = f"https://api.worldbank.org/v2/country/UGA/indicator/{code}"
         try:
-            resp = requests.get(
-                url, params={"format": "json", "per_page": 1000}, timeout=15
-            )
+            resp = requests.get(url, params={"format": "json", "per_page": 1000}, timeout=15)
             resp.raise_for_status()
             payload = resp.json()
-
-            # World Bank quirk: a bad indicator/country still returns HTTP 200,
-            # but with a 1-element array carrying an error message instead of
-            # a [metadata, rows] pair. Guard against that before indexing [1].
             if not isinstance(payload, list) or len(payload) < 2 or payload[1] is None:
-                st.warning(f"No data returned for {name} ({code}) — skipping.")
                 continue
-
             data = payload[1]
             rows += [
-                {
-                    "indicator": name,
-                    "year": int(x["date"]),
-                    "value": float(x["value"])
-                }
+                {"indicator": name, "year": int(x["date"]), "value": float(x["value"]), "ingested_at": ingest_ts}
                 for x in data if x.get("value") is not None
             ]
-        except requests.exceptions.RequestException as e:
-            st.warning(f"Could not fetch {name}: {e}")
+        except requests.exceptions.RequestException:
             continue
+    return pd.DataFrame(rows)
 
-    df = pd.DataFrame(rows)
+
+def ingestion_worker():
+    """Runs forever in a background thread, syncing from the World Bank
+    API on a schedule and appending to a local CSV file on disk."""
+    while True:
+        try:
+            new_df = fetch_all_indicators()
+            if not new_df.empty:
+                with _csv_lock:
+                    write_header = not os.path.exists(DATA_FILE)
+                    new_df.to_csv(DATA_FILE, mode="a", header=write_header, index=False)
+        except Exception:
+            pass
+        time.sleep(POLL_INTERVAL_SECONDS)
+
+
+# Start the background ingestion thread exactly ONCE per running process,
+# not once per browser session -- Streamlit Cloud serves every visitor from
+# the same process, so a st.session_state guard would let each new tab spawn
+# its own thread, causing concurrent writes that corrupt the file.
+if not globals().get("_ingestion_thread_started"):
+    globals()["_ingestion_thread_started"] = True
+    threading.Thread(target=ingestion_worker, daemon=True).start()
+    if not os.path.exists(DATA_FILE):
+        with _csv_lock:
+            seed_df = fetch_all_indicators()
+            if not seed_df.empty:
+                seed_df.to_csv(DATA_FILE, index=False)
 
     con = duckdb.connect(":memory:")
     con.register("economic", df)

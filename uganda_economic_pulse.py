@@ -150,8 +150,6 @@ fc = pd.DataFrame({
     "upper":forecast.conf_int().iloc[:,1].values
 })
 
-display(fc)
-
 fig = go.Figure()
 
 fig.add_trace(go.Scatter(

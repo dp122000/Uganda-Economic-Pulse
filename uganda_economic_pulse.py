@@ -164,6 +164,20 @@ if page == "01 Economic Overview":
             ["Low", "Moderate", "High"][score]
         )
 
+     st.subheader("Data-informed priorities")
+
+    if risk_scores["Inflation"] > 0:
+        st.write("• Monitor inflationary pressure and price stability.")
+
+    if risk_scores["GDP Growth"] > 0:
+        st.write("• Support productivity and sustainable economic growth.")
+
+    if risk_scores["Unemployment"] > 0:
+        st.write("• Strengthen employment and skills-development opportunities.")
+
+    if risk_scores["Trade"] > 0:
+        st.write("• Monitor import pressure and trade-balance deterioration.")
+
     st.info(
         "This is an analytical risk framework developed for this project "
         "and is not an official World Bank or Government classification."

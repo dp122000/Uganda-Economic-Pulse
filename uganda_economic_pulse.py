@@ -38,20 +38,34 @@ IND = {
 def get_data():
     rows = []
 
-    for name, code in IND.items():
+        for name, code in IND.items():
         url = f"https://api.worldbank.org/v2/country/UGA/indicator/{code}"
-        data = requests.get(
-            url, params={"format": "json", "per_page": 1000}
-        ).json()[1]
+        try:
+            resp = requests.get(
+                url, params={"format": "json", "per_page": 1000}, timeout=15
+            )
+            resp.raise_for_status()
+            payload = resp.json()
 
-        rows += [
-            {
-                "indicator": name,
-                "year": int(x["date"]),
-                "value": float(x["value"])
-            }
-            for x in data if x["value"] is not None
-        ]
+            # World Bank quirk: a bad indicator/country still returns HTTP 200,
+            # but with a 1-element array carrying an error message instead of
+            # a [metadata, rows] pair. Guard against that before indexing [1].
+            if not isinstance(payload, list) or len(payload) < 2 or payload[1] is None:
+                st.warning(f"No data returned for {name} ({code}) — skipping.")
+                continue
+
+            data = payload[1]
+            rows += [
+                {
+                    "indicator": name,
+                    "year": int(x["date"]),
+                    "value": float(x["value"])
+                }
+                for x in data if x.get("value") is not None
+            ]
+        except requests.exceptions.RequestException as e:
+            st.warning(f"Could not fetch {name}: {e}")
+            continue
 
     df = pd.DataFrame(rows)
 

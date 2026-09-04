@@ -308,8 +308,9 @@ else:
                 name="95% Prediction Interval"
             ))
 
-        except Exception:
+           except Exception as e:
             forecast_df = None
+            st.warning(f"Forecast could not be generated for {indicator}: {e}")
 
     else:
         forecast_df = None

@@ -38,7 +38,7 @@ IND = {
 def get_data():
     rows = []
 
-        for name, code in IND.items():
+    for name, code in IND.items():
         url = f"https://api.worldbank.org/v2/country/UGA/indicator/{code}"
         try:
             resp = requests.get(

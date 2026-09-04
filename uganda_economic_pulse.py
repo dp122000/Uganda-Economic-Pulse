@@ -96,7 +96,7 @@ if not globals().get("_ingestion_thread_started"):
     con = duckdb.connect(":memory:")
     con.register("economic", df)
 
-return con.execute("""
+      return con.execute("""
         SELECT indicator, year, value
         FROM economic
         ORDER BY year

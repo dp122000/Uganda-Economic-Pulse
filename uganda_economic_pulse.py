@@ -240,26 +240,14 @@ if page == "01 Economic Overview":
 
     st.subheader("Overall Economic Risk")
 
-    overall_color = "red" if level == "High" else "black"
-    st.markdown(
-        f"""<div>
-            <div style="font-size:14px; color:#666;">Risk Level</div>
-            <div style="font-size:32px; font-weight:700; color:{overall_color};">{level} — {overall}/100</div>
-        </div>""",
-        unsafe_allow_html=True,
-    )
+    st.metric("Risk Level", f"{level} — {overall}/100")
 
     risk_cols = st.columns(len(risk_scores))
 
     for col, (name, score) in zip(risk_cols, risk_scores.items()):
-        label = ["Low", "Moderate", "High"][score]
-        color = "red" if label == "High" else "black"
-        col.markdown(
-            f"""<div style="text-align:center;">
-                <div style="font-size:14px; color:#666;">{name}</div>
-                <div style="font-size:28px; font-weight:700; color:{color};">{label}</div>
-            </div>""",
-            unsafe_allow_html=True,
+        col.metric(
+            name,
+            ["Low", "Moderate", "High"][score]
         )
 
     st.subheader("Data-informed priorities")

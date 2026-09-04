@@ -179,7 +179,20 @@ page = st.sidebar.radio(
     "Navigation",
     ["01 Economic Overview", "02 Indicators & Forecast"]
 )
+st.sidebar.divider()
+st.sidebar.subheader("Date Range")
 
+min_year = int(df["year"].min())
+max_year = int(df["year"].max())
+
+year_range = st.sidebar.slider(
+    "Select year range",
+    min_value=min_year,
+    max_value=max_year,
+    value=(min_year, max_year),
+)
+
+df = df[(df["year"] >= year_range[0]) & (df["year"] <= year_range[1])]
 
 # =========================================================
 # PAGE 1 — OVERVIEW
@@ -221,9 +234,6 @@ if page == "01 Economic Overview":
     )
 
     st.plotly_chart(fig, use_container_width=True)
-
-    with st.expander("Indicator summary (via DuckDB)"):
-        st.dataframe(indicator_summary, use_container_width=True, hide_index=True)
 
     st.subheader("Overall Economic Risk")
 

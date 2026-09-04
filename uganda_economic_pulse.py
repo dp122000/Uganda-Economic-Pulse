@@ -130,8 +130,6 @@ overall_level = (
     else "High"
 )
 
-display(risk_table)
-
 print(f"Overall Risk: {overall_level} ({overall}/100)")
 
 """GDP Forecast"""

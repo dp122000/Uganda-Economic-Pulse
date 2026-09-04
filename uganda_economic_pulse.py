@@ -55,7 +55,7 @@ data = pd.DataFrame(
     sum([fetch(code,name) for name,code in INDICATORS.items()], [])
 ).sort_values(["indicator","year"])
 
-display(data.tail(10))
+#display(data.tail(10))
 
 """Store in DuckDB and create trade balance"""
 

@@ -79,7 +79,6 @@ def ingestion_worker():
             pass
         time.sleep(POLL_INTERVAL_SECONDS)
 
-
 # Start the background ingestion thread exactly ONCE per running process,
 # not once per browser session -- Streamlit Cloud serves every visitor from
 # the same process, so a st.session_state guard would let each new tab spawn
@@ -93,6 +92,9 @@ if not globals().get("_ingestion_thread_started"):
             if not seed_df.empty:
                 seed_df.to_csv(DATA_FILE, index=False)
 
+
+@st.cache_data(ttl=30)
+def load_data():
     con = duckdb.connect(":memory:")
     con.register("economic", df)
     return con.execute("""
@@ -100,7 +102,6 @@ if not globals().get("_ingestion_thread_started"):
         FROM economic
         ORDER BY year
     """).df()
-
 
 df = get_data()
 

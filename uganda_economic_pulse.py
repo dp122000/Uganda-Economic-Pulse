@@ -82,8 +82,6 @@ ORDER BY year
 
 trade["trade_balance"] = trade.exports - trade.imports
 
-display(trade.tail())
-
 """Risk engine"""
 
 def risk(value, thresholds):

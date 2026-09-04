@@ -220,14 +220,11 @@ if page == "01 Economic Overview":
 
     for indicator in trend.indicator.unique():
         x = trend[trend.indicator == indicator]
-        point_colors = ["red" if v < 0 else "black" for v in x.value]
         fig.add_trace(go.Scatter(
             x=x.year,
             y=x.value,
             mode="lines+markers",
-            name=indicator,
-            line=dict(color="black"),
-            marker=dict(color=point_colors, size=8),
+            name=indicator
         ))
 
     fig.update_layout(

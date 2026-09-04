@@ -16,7 +16,7 @@ The dashboard transforms key economic indicators into actionable insights for un
 https://api.worldbank.org/v2/country/UG/indicator/{CODE}?format=json
 """
 
-"""Imported libraries and defined project settings"""
+#Imported libraries and defined project settings
 import streamlit as st
 import requests, duckdb, numpy as np, pandas as pd
 import plotly.graph_objects as go
@@ -35,7 +35,7 @@ INDICATORS = {
     "Poverty":"SI.POV.DDAY"
 }
 
-"""Fetch Uganda's data"""
+#Fetch Uganda's data
 
 def fetch(code, name):
     r = requests.get(
@@ -58,7 +58,7 @@ data = pd.DataFrame(
 
 #display(data.tail(10))
 
-"""Store in DuckDB and create trade balance"""
+#Store in DuckDB and create trade balance
 
 con = duckdb.connect(DB)
 
@@ -82,7 +82,7 @@ ORDER BY year
 
 trade["trade_balance"] = trade.exports - trade.imports
 
-"""Risk engine"""
+#Risk engine
 
 def risk(value, thresholds):
     return np.digitize(value, thresholds)
@@ -132,7 +132,7 @@ overall_level = (
 
 print(f"Overall Risk: {overall_level} ({overall}/100)")
 
-"""GDP Forecast"""
+#GDP Forecast
 
 gdp = (
     data[data.indicator=="GDP Growth"]
@@ -181,7 +181,7 @@ fig.update_layout(
 
 fig.show()
 
-"""Streamlit dashboard"""
+#Streamlit dashboard
 
 # Commented out IPython magic to ensure Python compatibility.
 # %%writefile app.py

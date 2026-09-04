@@ -21,7 +21,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🇺🇬 Uganda Economic Pulse")
+st.title("Uganda Economic Pulse")
 st.caption("Economic Monitoring, Risk Analysis & Growth Outlook")
 
 IND = {
@@ -164,7 +164,7 @@ if page == "01 Economic Overview":
             ["Low", "Moderate", "High"][score]
         )
 
-     st.subheader("Data-informed priorities")
+    st.subheader("Data-informed priorities")
 
     if risk_scores["Inflation"] > 0:
         st.write("• Monitor inflationary pressure and price stability.")

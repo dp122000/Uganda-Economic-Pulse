@@ -95,15 +95,35 @@ if not globals().get("_ingestion_thread_started"):
 
 @st.cache_data(ttl=30)
 def load_data():
+    if not os.path.exists(DATA_FILE):
+        return pd.DataFrame(columns=["indicator", "year", "value"])
+
     con = duckdb.connect(":memory:")
-    con.register("economic", df)
-    return con.execute("""
-        SELECT indicator, year, value
-        FROM economic
+    con.execute(f"""
+        CREATE OR REPLACE VIEW raw_economic AS
+        SELECT * FROM read_csv(
+            '{DATA_FILE}',
+            columns = {{
+                'indicator': 'VARCHAR', 'year': 'INTEGER',
+                'value': 'DOUBLE', 'ingested_at': 'VARCHAR'
+            }},
+            ignore_errors = true, header = true
+        )
+    """)
+    result = con.execute("""
+        SELECT DISTINCT indicator, year, value
+        FROM raw_economic
+        WHERE year IS NOT NULL AND value IS NOT NULL
         ORDER BY year
     """).df()
+    con.close()
+    return result
 
-df = get_data()
+df = load_data()
+
+if df.empty:
+    st.warning("Waiting on the first data sync — refresh in about a minute.")
+    st.stop()
 
 trade = df[df.indicator.isin(["Exports", "Imports"])].pivot(
     index="year",

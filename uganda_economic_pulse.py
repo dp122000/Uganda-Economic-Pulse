@@ -8,11 +8,11 @@ Uganda Economic Pulse is a data-driven economic intelligence dashboard designed 
 The dashboard transforms key economic indicators into actionable insights for understanding Uganda’s changing economic landscape.
 
 **Data source:** World Bank Indicators API
-https://api.worldbank.org/v2/country/UG/indicator/{CODE}?format=json
+https://api.worldbank.org/v2/country/UG/indicator/{code}
 """
 import streamlit as st
 import requests, duckdb, numpy as np, pandas as pd
-import plotly.express as px
+import plotly.graph_objects as go
 from statsmodels.tsa.arima.model import ARIMA
 
 st.set_page_config(
@@ -21,8 +21,8 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🇺🇬 Uganda Economic Pulse")
-st.caption("Economic Monitoring, Risk Analysis & Growth Outlook")
+st.title("Uganda Economic Pulse")
+st.caption("Turning Uganda’s economic data into evidence for better understanding, monitoring and decision-making.")
 
 IND = {
     "GDP Growth": "NY.GDP.MKTP.KD.ZG",
@@ -34,233 +34,291 @@ IND = {
 }
 
 @st.cache_data(ttl=3600)
-def get_data():
+def load_data():
     rows = []
 
     for name, code in IND.items():
         url = f"https://api.worldbank.org/v2/country/UGA/indicator/{code}"
-        data = requests.get(
-            url, params={"format": "json", "per_page": 1000}
-        ).json()[1]
+        r = requests.get(
+            url,
+            params={"format": "json", "per_page": 1000},
+            timeout=30
+        )
+        data = r.json()[1]
 
         rows += [
-            {
-                "indicator": name,
-                "year": int(x["date"]),
-                "value": float(x["value"])
-            }
+            {"indicator": name, "year": int(x["date"]),
+             "value": float(x["value"])}
             for x in data if x["value"] is not None
         ]
 
     df = pd.DataFrame(rows)
 
     con = duckdb.connect(":memory:")
-    con.register("economic", df)
+    con.register("data", df)
 
     return con.execute("""
         SELECT indicator, year, value
-        FROM economic
+        FROM data
         ORDER BY year
     """).df()
 
-df = get_data()
 
-trade = df[df.indicator.isin(["Exports", "Imports"])].pivot(
-    index="year", columns="indicator", values="value"
-).reset_index()
+df = load_data()
+
+trade = (
+    df[df.indicator.isin(["Exports", "Imports"])]
+    .pivot(index="year", columns="indicator", values="value")
+    .reset_index()
+)
 
 trade["Trade Balance"] = trade["Exports"] - trade["Imports"]
 
-latest = df.sort_values("year").groupby("indicator").tail(1)
-latest = latest.set_index("indicator")["value"]
-
-
-def risk(value, low, high, reverse=False):
-    if reverse:
-        return 0 if value >= high else 1 if value >= low else 2
-    return 0 if value < low else 1 if value < high else 2
-
-
-risk_scores = {
-    "GDP Growth": risk(latest["GDP Growth"], 3, 5, True),
-    "Inflation": risk(latest["Inflation"], 5, 8),
-    "Unemployment": risk(latest["Unemployment"], 5, 8)
-}
-
-tb = trade["Trade Balance"].dropna().iloc[-1]
-risk_scores["Trade"] = 0 if tb >= 0 else 1 if tb >= -5 else 2
-
-overall = round(np.mean(list(risk_scores.values())) * 50, 1)
-level = "Low" if overall <= 39 else "Moderate" if overall <= 69 else "High"
-
-
-page = st.sidebar.radio(
-    "Navigation",
-    ["01 Overview", "02 Indicators", "03 Outlook & Risk"]
+latest = (
+    df.sort_values("year")
+    .groupby("indicator")
+    .tail(1)
+    .set_index("indicator")["value"]
 )
 
+trade_latest = trade["Trade Balance"].dropna().iloc[-1]
 
-# ───────────────── OVERVIEW ─────────────────
 
-if page == "01 Overview":
+def risk(v, low, high, reverse=False):
+    if reverse:
+        return 0 if v >= high else 1 if v >= low else 2
+    return 0 if v < low else 1 if v < high else 2
 
-    st.header("What is happening?")
 
-    c1, c2, c3, c4 = st.columns(4)
+risks = {
+    "GDP Growth": risk(latest["GDP Growth"], 3, 5, True),
+    "Inflation": risk(latest["Inflation"], 5, 8),
+    "Unemployment": risk(latest["Unemployment"], 5, 8),
+    "Trade": 0 if trade_latest >= 0 else 1 if trade_latest >= -5 else 2
+}
 
-    c1.metric("GDP Growth", f"{latest['GDP Growth']:.1f}%")
-    c2.metric("Inflation", f"{latest['Inflation']:.1f}%")
-    c3.metric("Unemployment", f"{latest['Unemployment']:.1f}%")
-    c4.metric("Trade Balance", f"{tb:.1f}%")
+overall = round(np.mean(list(risks.values())) * 50, 1)
+risk_level = "Low" if overall <= 33 else "Moderate" if overall <= 66 else "High"
+
+page = st.sidebar.radio(
+    "Dashboard",
+    ["01 Overview", "02 Indicators & Outlook"]
+)
+
+# =========================
+# PAGE 1 — HOME
+# =========================
+
+if page == "01 Home":
+
+    st.header("Economic Overview")
+    st.write("What is happening in Uganda's economy?")
+
+    a, b, c, d = st.columns(4)
+
+    a.metric("GDP Growth", f"{latest['GDP Growth']:.1f}%")
+    b.metric("Inflation", f"{latest['Inflation']:.1f}%")
+    c.metric("Unemployment", f"{latest['Unemployment']:.1f}%")
+    d.metric("Trade Balance", f"{trade_latest:.1f}%")
 
     st.subheader("Economic Trends")
 
-    trend = df[df.indicator.isin(
-        ["GDP Growth", "Inflation", "Unemployment"]
-    )]
-
-    fig = px.line(
-        trend,
-        x="year",
-        y="value",
-        color="indicator",
-        markers=True,
-        labels={"value": "Percentage", "year": "Year"}
+    selected = st.multiselect(
+        "Indicators to compare",
+        ["GDP Growth", "Inflation", "Unemployment"],
+        default=["GDP Growth", "Inflation"]
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    if selected:
+        trend = df[df.indicator.isin(selected)]
+
+        fig = go.Figure()
+
+        for indicator in selected:
+            x = trend[trend.indicator == indicator]
+            fig.add_trace(go.Scatter(
+                x=x.year,
+                y=x.value,
+                mode="lines+markers",
+                name=indicator
+            ))
+
+        fig.update_layout(
+            xaxis_title="Year",
+            yaxis_title="Value",
+            hovermode="x unified"
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("Economic Risk")
+
+    st.metric(
+        "Overall Analytical Risk",
+        f"{risk_level} — {overall}/100"
+    )
+
+    r1, r2, r3, r4 = st.columns(4)
+
+    r1.write(f"**GDP Growth:** {'Low' if risks['GDP Growth']==0 else 'Moderate' if risks['GDP Growth']==1 else 'High'}")
+    r2.write(f"**Inflation:** {'Low' if risks['Inflation']==0 else 'Moderate' if risks['Inflation']==1 else 'High'}")
+    r3.write(f"**Unemployment:** {'Low' if risks['Unemployment']==0 else 'Moderate' if risks['Unemployment']==1 else 'High'}")
+    r4.write(f"**Trade:** {'Low' if risks['Trade']==0 else 'Moderate' if risks['Trade']==1 else 'High'}")
 
     st.info(
-        f"Current analytical economic risk: **{level}** "
-        f"({overall}/100)."
-    )
-
-    st.caption(
         "Risk score is an analytical framework developed for this project "
         "and is not an official World Bank or Government classification."
     )
 
 
-# ───────────────── INDICATORS ─────────────────
-
-elif page == "02 Indicators":
-
-    st.header("Why is it happening?")
-
-    indicator = st.selectbox(
-        "Select indicator",
-        list(IND.keys())
-    )
-
-    data = df[df.indicator == indicator]
-
-    fig = px.line(
-        data,
-        x="year",
-        y="value",
-        markers=True,
-        title=indicator
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
-
-    a, b, c, d = st.columns(4)
-
-    a.metric("Latest", f"{data.value.iloc[-1]:.2f}")
-    b.metric("Average", f"{data.value.mean():.2f}")
-    c.metric("Maximum", f"{data.value.max():.2f}")
-    d.metric("Minimum", f"{data.value.min():.2f}")
-
-    if indicator == "Trade Balance":
-        st.dataframe(trade, use_container_width=True)
-    else:
-        st.dataframe(
-            data.sort_values("year", ascending=False),
-            use_container_width=True
-        )
-
-    if indicator == "Poverty":
-        st.caption(
-            "Poverty observations are survey-based and irregular. "
-            "They are therefore not forecast."
-        )
-
-
-# ───────────────── OUTLOOK ─────────────────
+# =========================
+# PAGE 2 — INDICATORS
+# =========================
 
 else:
 
-    st.header("What could happen next?")
+    st.header("Indicators & Outlook")
+    st.write("Explore an individual indicator and its projected outlook.")
 
-    horizon = st.slider("Forecast horizon (years)", 1, 3, 3)
-
-    gdp = df[df.indicator == "GDP Growth"].sort_values("year")
-    series = gdp.set_index("year")["value"]
-
-    model = ARIMA(series, order=(1, 1, 1)).fit()
-    result = model.get_forecast(horizon)
-
-    fc = result.predicted_mean
-    ci = result.conf_int()
-
-    years = list(range(series.index.max() + 1,
-                       series.index.max() + horizon + 1))
-
-    forecast_df = pd.DataFrame({
-        "Year": years,
-        "Forecast": fc.values,
-        "Lower": ci.iloc[:, 0].values,
-        "Upper": ci.iloc[:, 1].values
-    })
-
-    fig = px.line(
-        forecast_df,
-        x="Year",
-        y="Forecast",
-        markers=True,
-        title="Uganda GDP Growth Forecast"
+    indicator = st.selectbox(
+        "Select economic indicator",
+        ["GDP Growth", "Inflation", "Unemployment",
+         "Exports", "Imports", "Trade Balance", "Poverty"]
     )
 
-    fig.add_scatter(
-        x=forecast_df["Year"],
-        y=forecast_df["Upper"],
-        mode="lines",
-        name="Upper 95% bound"
+    horizon = st.slider(
+        "Forecast horizon",
+        min_value=1,
+        max_value=3,
+        value=2
     )
 
-    fig.add_scatter(
-        x=forecast_df["Year"],
-        y=forecast_df["Lower"],
-        mode="lines",
-        name="Lower 95% bound"
+    # Trade balance is derived
+    if indicator == "Trade Balance":
+        data = trade[["year", "Trade Balance"]].dropna()
+        data.columns = ["year", "value"]
+    else:
+        data = df[df.indicator == indicator][["year", "value"]]
+
+    data = data.sort_values("year")
+
+    latest_value = data.value.iloc[-1]
+
+    x1, x2, x3, x4 = st.columns(4)
+
+    x1.metric("Latest", f"{latest_value:.2f}")
+    x2.metric("Average", f"{data.value.mean():.2f}")
+    x3.metric("Maximum", f"{data.value.max():.2f}")
+    x4.metric("Minimum", f"{data.value.min():.2f}")
+
+    st.subheader(f"{indicator} — Historical & Forecast")
+
+    # Poverty has irregular survey observations
+    if indicator == "Poverty":
+        fig = go.Figure()
+
+        fig.add_trace(go.Scatter(
+            x=data.year,
+            y=data.value,
+            mode="lines+markers",
+            name="Historical"
+        ))
+
+        fig.update_layout(
+            xaxis_title="Year",
+            yaxis_title="Value",
+            hovermode="x unified"
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.warning(
+            "Poverty is not forecast because observations are irregular "
+            "and primarily survey-based."
+        )
+
+    else:
+        series = data.set_index("year")["value"]
+
+        try:
+            model = ARIMA(series, order=(1, 1, 1)).fit()
+            result = model.get_forecast(horizon)
+
+            forecast = result.predicted_mean
+            interval = result.conf_int()
+
+            years = range(
+                series.index.max() + 1,
+                series.index.max() + horizon + 1
+            )
+
+            fig = go.Figure()
+
+            # Historical
+            fig.add_trace(go.Scatter(
+                x=series.index,
+                y=series.values,
+                mode="lines+markers",
+                name="Historical"
+            ))
+
+            # Forecast
+            fig.add_trace(go.Scatter(
+                x=list(years),
+                y=forecast.values,
+                mode="lines+markers",
+                name="Forecast",
+                line=dict(dash="dash")
+            ))
+
+            # Confidence interval
+            fig.add_trace(go.Scatter(
+                x=list(years) + list(years)[::-1],
+                y=list(interval.iloc[:, 1]) +
+                  list(interval.iloc[:, 0])[::-1],
+                fill="toself",
+                line=dict(width=0),
+                name="95% Prediction Interval",
+                opacity=0.25
+            ))
+
+            fig.update_layout(
+                xaxis_title="Year",
+                yaxis_title="Value",
+                hovermode="x unified"
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            forecast_table = pd.DataFrame({
+                "Year": list(years),
+                "Forecast": forecast.values,
+                "Lower 95%": interval.iloc[:, 0].values,
+                "Upper 95%": interval.iloc[:, 1].values
+            })
+
+            st.subheader("Forecast Values")
+            st.dataframe(
+                forecast_table,
+                use_container_width=True,
+                hide_index=True
+            )
+
+        except Exception:
+            st.error(
+                "There are not enough observations to produce a reliable "
+                "forecast for this indicator."
+            )
+
+    st.subheader("Historical Data")
+
+    st.dataframe(
+        data.sort_values("year", ascending=False),
+        use_container_width=True,
+        hide_index=True
     )
-
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.dataframe(forecast_df, use_container_width=True)
-
-    st.subheader("Risk Assessment")
-
-    st.metric("Overall Economic Risk", f"{level} — {overall}/100")
-
-    for name, score in risk_scores.items():
-        label = ["Low", "Moderate", "High"][score]
-        st.write(f"**{name}:** {label}")
-
-    st.subheader("Data-informed priorities")
-
-    if risk_scores["Inflation"] > 0:
-        st.write("• Monitor inflationary pressure and price stability.")
-
-    if risk_scores["GDP Growth"] > 0:
-        st.write("• Support productivity and sustainable economic growth.")
-
-    if risk_scores["Unemployment"] > 0:
-        st.write("• Strengthen employment and skills-development opportunities.")
-
-    if risk_scores["Trade"] > 0:
-        st.write("• Monitor import pressure and trade-balance deterioration.")
 
     st.caption(
-        "GDP forecasts use an ARIMA model with 95% prediction intervals."
+        "Forecasts are statistical estimates and should not be interpreted "
+        "as official economic projections."
     )

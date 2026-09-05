@@ -8,7 +8,7 @@ The dashboard uses automated data ingestion from the **World Bank API**, **DuckD
 
 
 **Data source:** World Bank Indicators API 
-https://api.worldbank.org/v2/country/UG/indicator/{CODE}?format=json 
+https://api.worldbank.org/v2/country/UGA/indicator/{code}
 
 ### Key Indicators
 

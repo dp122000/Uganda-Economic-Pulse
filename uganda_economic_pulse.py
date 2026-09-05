@@ -22,9 +22,31 @@ st.set_page_config(
     page_icon="🇺🇬",
     layout="wide"
 )
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: #F8FAFC;
+    }
+    div[data-testid="stMetric"] {
+        background-color: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 10px;
+        padding: 18px 20px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    }
+    div[data-testid="stMetricLabel"] {
+        font-size: 14px;
+        color: #64748B;
+    }
+    div[data-testid="stMetricValue"] {
+        font-size: 26px;
+        font-weight: 700;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 st.title("Uganda Economic Pulse")
-st.caption("Economic Monitoring, Risk Analysis & Growth Outlook")
+st.caption("A live analytics dashboard monitoring Uganda's macroeconomic indicators, flagging emerging risks and forecasting near-term growth.")
 
 IND = {
     "GDP Growth": "NY.GDP.MKTP.KD.ZG",

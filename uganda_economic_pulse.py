@@ -24,19 +24,16 @@ st.set_page_config(
 )
 st.markdown("""
     <style>
-    .stApp {
-        background-color: #F8FAFC;
-    }
     div[data-testid="stMetric"] {
-        background-color: #FFFFFF;
-        border: 1px solid #E2E8F0;
+        background-color: var(--secondary-background-color);
+        border: 1px solid rgba(128, 128, 128, 0.2);
         border-radius: 10px;
         padding: 18px 20px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
     }
     div[data-testid="stMetricLabel"] {
         font-size: 14px;
-        color: #64748B;
+        opacity: 0.7;
     }
     div[data-testid="stMetricValue"] {
         font-size: 26px;
